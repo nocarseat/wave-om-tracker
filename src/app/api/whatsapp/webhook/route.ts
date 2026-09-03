@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { extractMessages, verifySignature } from "@/lib/whatsapp/cloud";
+import { extractMessages, sendText, verifySignature } from "@/lib/whatsapp/cloud";
 
 /*
  * Webhook WhatsApp (Meta Cloud API).
@@ -56,7 +56,22 @@ export async function POST(request: NextRequest) {
       })
       .select("id")
       .maybeSingle();
-    if (error || !log) continue;
+    if (error) {
+      // 23505 = message déjà journalisé (relance Meta) : on ignore en silence.
+      // Toute autre erreur (colonne manquante, base indisponible) : on prévient l'utilisateur
+      // au lieu de se taire, et on la rend visible dans les logs Netlify.
+      if (error.code !== "23505") {
+        console.error("wa_messages insert failed", error.message);
+        kicks.push(sendText(msg.from, "Oups, un souci technique de mon côté. Réessaie dans quelques minutes ou envoie AIDE.").catch(() => undefined));
+      }
+      continue;
+    }
+    if (!log) continue;
+
+    // Accusé de réception immédiat pour ce qui prend du temps (lecture d'image par Claude)
+    if (msg.type === "image") {
+      kicks.push(sendText(msg.from, "Je lis ton image, réponse dans quelques secondes.").catch(() => undefined));
+    }
 
     // Lancement du traitement dans une invocation séparée, sans attendre sa réponse
     kicks.push(
@@ -68,8 +83,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // On laisse ~1,5 s aux requêtes de traitement pour partir, puis on répond à Meta
-  await Promise.race([Promise.allSettled(kicks), new Promise((r) => setTimeout(r, 1500))]);
+  // On laisse ~2,5 s aux accusés de réception et aux requêtes de traitement pour partir, puis on répond à Meta
+  await Promise.race([Promise.allSettled(kicks), new Promise((r) => setTimeout(r, 2500))]);
   return NextResponse.json({ ok: true });
 }
 
