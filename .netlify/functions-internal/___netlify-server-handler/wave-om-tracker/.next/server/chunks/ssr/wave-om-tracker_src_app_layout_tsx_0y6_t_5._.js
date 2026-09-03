@@ -1,0 +1,3 @@
+module.exports=[47651,a=>{"use strict";var b=a.i(34839);a.s(["default",0,function({children:a}){return(0,b.jsx)("html",{lang:"fr",className:"h-full antialiased",children:(0,b.jsx)("body",{className:"min-h-full flex flex-col",children:a})})},"metadata",0,{title:"Sama Dépenses",description:"Suivi des dépenses Wave et Orange Money",manifest:"/manifest.webmanifest",appleWebApp:{capable:!0,statusBarStyle:"default",title:"Sama Dépenses"},icons:{icon:"/icons/icon-192.png",apple:"/icons/icon-192.png"}},"viewport",0,{themeColor:"#10233a",width:"device-width",initialScale:1,viewportFit:"cover"}])},25912,function(a){a.n(a.i(47651))}];
+
+//# sourceMappingURL=wave-om-tracker_src_app_layout_tsx_0y6_t_5._.js.map

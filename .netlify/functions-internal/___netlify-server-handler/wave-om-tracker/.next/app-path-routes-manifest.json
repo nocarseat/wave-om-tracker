@@ -1,0 +1,13 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/ingest/sms/route": "/api/ingest/sms",
+  "/api/parse-image/route": "/api/parse-image",
+  "/auth/signout/route": "/auth/signout",
+  "/budgets/page": "/budgets",
+  "/import/page": "/import",
+  "/login/page": "/login",
+  "/page": "/",
+  "/settings/page": "/settings",
+  "/transactions/page": "/transactions"
+}

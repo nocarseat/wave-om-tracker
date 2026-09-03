@@ -42,7 +42,3 @@ next-env.d.ts
 
 # keep the template
 !.env.example
-
-# Local Netlify folder
-.netlify
-.netlify
