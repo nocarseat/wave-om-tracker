@@ -7,5 +7,6 @@
   # Les variables NEXT_PUBLIC_* sont publiques par conception : Next.js les inclut dans le JS envoyé
   # au navigateur, et le scanner de secrets Netlify les prendrait pour une fuite.
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,CLAUDE_MODEL"
-  # Fichiers qui contiennent des exemples de clés, jamais de vraies valeurs
-  SECRETS_SCAN_OMIT_PATHS = ".env.example,README.md,docs/**"
+  # Fichiers qui contiennent des exemples de clés (jamais de vraies valeurs) et le cache de build
+  # Turbopack, qui enregistre l'environnement de compilation mais n'est jamais déployé.
+  SECRETS_SCAN_OMIT_PATHS = ".env.example,README.md,docs/**,.netlify/.next/cache/**,.next/cache/**"
