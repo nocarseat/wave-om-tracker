@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:sms": "node --experimental-strip-types scripts/test-sms.ts",
-    "test:wa": "node --experimental-strip-types scripts/test-whatsapp.ts"
+    "test:wa": "node --experimental-strip-types scripts/test-whatsapp.ts",
+    "test:fp": "node --experimental-strip-types scripts/test-fingerprint.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

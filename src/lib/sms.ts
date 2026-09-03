@@ -126,18 +126,24 @@ export function parseSms(sender: string | null | undefined, body: string): Parse
   };
 }
 
-// Empreinte pour la déduplication : référence opérateur si présente,
-// sinon hash du contenu + minute de réception.
+// Empreinte pour la déduplication, par ordre de fiabilité :
+// 1. référence opérateur (SMS) ;
+// 2. contenu + date lue sur l'image (captures d'historique) : la même ligne réimportée reste un doublon ;
+// 3. texte brut + minute de réception (SMS sans référence).
+// Ne jamais utiliser un marqueur de lot comme base : toutes les lignes d'une capture le partagent.
 export function fingerprintFor(
   parsed: ParsedTx,
   rawText: string,
   receivedAt: Date
 ): string {
   if (parsed.reference) return `${parsed.provider}:${parsed.reference}`;
+  const hash = (input: string) => createHash("sha256").update(input).digest("hex").slice(0, 32);
+  if (parsed.occurred_at) {
+    return hash(
+      `${parsed.provider}|${parsed.direction}|${parsed.amount}|${(parsed.counterparty ?? "").toLowerCase()}|${parsed.occurred_at}`
+    );
+  }
   const minute = new Date(receivedAt);
   minute.setSeconds(0, 0);
-  return createHash("sha256")
-    .update(`${parsed.provider}|${rawText.trim()}|${minute.toISOString()}`)
-    .digest("hex")
-    .slice(0, 32);
+  return hash(`${parsed.provider}|${parsed.direction}|${parsed.amount}|${rawText.trim()}|${minute.toISOString()}`);
 }
