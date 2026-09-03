@@ -1,0 +1,4 @@
+# Netlify détecte Next.js et applique automatiquement son adaptateur OpenNext.
+# Ne pas ajouter [[plugins]] @netlify/plugin-nextjs : c'est l'ancienne méthode, elle bloque les mises à jour.
+[build]
+  command = "npm run build"
