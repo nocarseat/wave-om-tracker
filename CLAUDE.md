@@ -13,7 +13,8 @@ Commentaires de code en français, conversation avec le développeur en anglais.
 - Hébergement Netlify (`netlify.toml`), déploiement par `git push` sur `main`
 
 ## Comment l'argent entre dans l'app
-0. WhatsApp (canal principal visé) -> `POST /api/whatsapp/webhook` (Meta Cloud API) -> `src/lib/whatsapp/handler.ts` :
+0. WhatsApp (canal principal visé) -> `POST /api/whatsapp/webhook` (journalise + déclenche `/api/whatsapp/process`
+   dans une invocation séparée, réponse 200 immédiate) -> `src/lib/whatsapp/handler.ts` :
    SMS transféré (parseSms), saisie rapide "1500 taxi" (`src/lib/quicklog.ts`), image (Claude vision, import direct
    avec ANNULER), question libre (Claude + `src/lib/summary.ts`), commandes AIDE / BILAN / SITE / LIER 123456.
    Un numéro inconnu reçoit un compte créé automatiquement (`src/lib/whatsapp/identity.ts`).
@@ -35,6 +36,8 @@ Boutons Charger / Supprimer dans Réglages (`src/app/settings/actions.ts`). Le n
 - Chaque table a `user_id` et une policy RLS `auth.uid() = user_id`. Le client admin (`SUPABASE_SECRET_KEY`) ne sert qu'au webhook SMS
 - Server Actions dans `actions.ts` à côté de la page ; composants client dans `src/components/`
 - Ne jamais définir `temperature` sur les appels Claude (Sonnet 5 renvoie 400)
+- Tout ce qui tourne dans une route API doit tenir en ~10 s (limite des fonctions Netlify) : sur WhatsApp,
+  utiliser `FAST_MODEL` (Haiku 4.5) et jamais de traitement lourd dans le webhook lui-même
 
 ## Commandes
 - `npm run dev` puis ouvrir http://localhost:3000 (sur le téléphone : http://<IP du PC>:3000, même Wi-Fi)

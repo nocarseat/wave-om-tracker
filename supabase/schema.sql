@@ -122,8 +122,13 @@ create table if not exists public.wa_messages (
   wa_message_id text not null unique,
   type text not null,
   body text,
+  profile_name text,
+  media_id text,
+  mime_type text,
+  caption text,
+  attempts int not null default 0,
   status text not null default 'received'
-    check (status in ('received', 'handled', 'ignored', 'error')),
+    check (status in ('received', 'processing', 'handled', 'ignored', 'error')),
   reply text,
   received_at timestamptz not null default now()
 );

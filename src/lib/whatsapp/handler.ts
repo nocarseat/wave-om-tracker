@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { answerMoneyQuestion, parseImageTransactions } from "@/lib/claude";
+import { FAST_MODEL, answerMoneyQuestion, parseImageTransactions } from "@/lib/claude";
 import { fcfa } from "@/lib/format";
 import { loadContext, recordParsedTx } from "@/lib/ingest";
 import { parseQuickLog } from "@/lib/quicklog";
@@ -103,9 +103,11 @@ async function routeText(admin: SupabaseClient, userId: string, text: string): P
     return "Je n'ai encore aucune opération pour toi ce mois-ci.\n\n" + HELP;
   }
   try {
-    return await answerMoneyQuestion(text, summaryForModel(s));
-  } catch {
-    return await bilan(admin, userId);
+    return await answerMoneyQuestion(text, summaryForModel(s), FAST_MODEL);
+  } catch (e) {
+    // Sans IA (crédit épuisé, panne), on renvoie quand même le bilan chiffré
+    const why = e instanceof Error && /credit balance|billing/i.test(e.message) ? " (assistant IA en pause)" : "";
+    return `${await bilan(admin, userId)}${why ? `\n${why.trim()}` : ""}`;
   }
 }
 
@@ -119,7 +121,7 @@ async function handleImage(admin: SupabaseClient, userId: string, msg: InboundMe
   type Allowed = (typeof allowed)[number];
   if (!allowed.includes(mimeType as Allowed)) return "Format d'image non pris en charge. Envoie une capture ou une photo en JPEG ou PNG.";
 
-  const items = await parseImageTransactions(data.toString("base64"), mimeType as Allowed, msg.caption ?? undefined);
+  const items = await parseImageTransactions(data.toString("base64"), mimeType as Allowed, msg.caption ?? undefined, FAST_MODEL);
   if (items.length === 0) return "Je n'ai rien pu lire sur cette image. Essaie une capture plus nette de l'historique, ou la photo du reçu bien à plat.";
 
   const ctx = await loadContext(admin, userId);

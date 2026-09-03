@@ -1,8 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ParsedTx } from "./types";
 
-// Modèle configurable : CLAUDE_MODEL dans .env (par défaut Sonnet 5)
+// Modèles configurables : CLAUDE_MODEL (par défaut Sonnet 5) pour le site,
+// CLAUDE_FAST_MODEL (par défaut Haiku 4.5) pour WhatsApp où la réponse doit tenir en quelques secondes.
 const MODEL = process.env.CLAUDE_MODEL ?? "claude-sonnet-5";
+export const FAST_MODEL = process.env.CLAUDE_FAST_MODEL ?? "claude-haiku-4-5-20251001";
 
 type ImageMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
 
@@ -40,11 +42,12 @@ function getClient() {
 export async function parseImageTransactions(
   base64Data: string,
   mediaType: ImageMediaType,
-  hint?: string
+  hint?: string,
+  model: string = MODEL
 ): Promise<ParsedTx[]> {
   const client = getClient();
   const response = await client.messages.create({
-    model: MODEL,
+    model,
     max_tokens: 4000,
     system: SYSTEM_PROMPT,
     messages: [
@@ -116,10 +119,14 @@ export function safeParseTransactions(text: string): ParsedTx[] {
 }
 
 // Réponse courte à une question sur les dépenses du mois (canal WhatsApp)
-export async function answerMoneyQuestion(question: string, monthContext: string): Promise<string> {
+export async function answerMoneyQuestion(
+  question: string,
+  monthContext: string,
+  model: string = MODEL
+): Promise<string> {
   const client = getClient();
   const response = await client.messages.create({
-    model: MODEL,
+    model,
     max_tokens: 300,
     system: `Tu es l'assistant d'une application de suivi des dépenses Wave et Orange Money au Sénégal.
 Tu réponds sur WhatsApp, en français simple, en 1 à 3 phrases, sans tiret cadratin, sans markdown.

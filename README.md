@@ -39,5 +39,15 @@ Le webhook attend `POST /api/ingest/sms` avec le header `x-ingest-token` et un J
    Verify token = la valeur de `WHATSAPP_VERIFY_TOKEN`, puis Subscribe au champ **messages**.
 4. Variables : `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `NEXT_PUBLIC_WHATSAPP_NUMBER`,
    `NEXT_PUBLIC_SITE_URL` (et `WHATSAPP_APP_SECRET` si vous voulez vérifier les signatures). Redéployez.
-5. Exécutez `supabase/migrations/002_whatsapp.sql` dans le SQL Editor (projets créés avant v7).
-6. Test : envoyez AIDE au numéro de test depuis votre WhatsApp.
+5. Exécutez `supabase/migrations/002_whatsapp.sql` puis `003_wa_async.sql` dans le SQL Editor (projets créés avant v8 ;
+   une installation neuve a tout via `schema.sql`).
+6. **Ajoutez votre numéro** dans la liste des destinataires de test (Étape 1 > Destinataire > Gérer la liste).
+   Sans cela, Meta ignore vos messages sans même appeler le webhook.
+7. **Abonnez l'application au compte WhatsApp.** Le tableau de bord ne le fait pas toujours tout seul. Vérifiez avec
+   `GET https://graph.facebook.com/v23.0/<WABA_ID>/subscribed_apps` (header `Authorization: Bearer <jeton>`) ;
+   si votre app n'y figure pas, `POST` sur la même URL. Le WABA ID est affiché sur la page Étape 1.
+8. Test : envoyez AIDE au numéro de test depuis votre WhatsApp. Chaque message reçu apparaît dans la table
+   `wa_messages` avec son statut et la réponse (ou l'erreur).
+
+Architecture : le webhook journalise le message et déclenche `/api/whatsapp/process` dans une invocation séparée
+(les fonctions Netlify sont limitées à ~10 s ; les images sont lues avec `CLAUDE_FAST_MODEL`, Haiku 4.5 par défaut).

@@ -1,13 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { extractMessages, markRead, sendText, verifySignature } from "@/lib/whatsapp/cloud";
-import { handleInbound } from "@/lib/whatsapp/handler";
+import { extractMessages, verifySignature } from "@/lib/whatsapp/cloud";
 
 /*
  * Webhook WhatsApp (Meta Cloud API).
  *   GET  : vérification lors de la configuration du webhook côté Meta
- *   POST : messages entrants. On répond 200 quoi qu'il arrive pour éviter les relances,
- *          et on déduplique via wa_messages.wa_message_id.
+ *   POST : messages entrants. On journalise, on déclenche le traitement dans une
+ *          invocation séparée (/api/whatsapp/process) et on répond 200 tout de suite :
+ *          les fonctions Netlify sont limitées à ~10 s, une capture lue par Claude peut
+ *          dépasser ce délai, et Meta relance le webhook si on tarde à répondre.
  */
 export async function GET(request: NextRequest) {
   const p = request.nextUrl.searchParams;
@@ -34,37 +35,46 @@ export async function POST(request: NextRequest) {
   if (messages.length === 0) return NextResponse.json({ ok: true });
 
   const admin = createAdminClient();
+  const base = publicOrigin(request);
+  const kicks: Promise<unknown>[] = [];
 
   for (const msg of messages) {
     if (!msg.id || !msg.from) continue;
 
-    // Déduplication : Meta renvoie le même message si on tarde à répondre
+    // Déduplication : Meta renvoie le même message tant qu'il n'a pas eu de 200
     const { data: log, error } = await admin
       .from("wa_messages")
-      .insert({ wa_from: msg.from, wa_message_id: msg.id, type: msg.type, body: msg.text ?? msg.caption ?? null })
+      .insert({
+        wa_from: msg.from,
+        wa_message_id: msg.id,
+        type: msg.type,
+        body: msg.text ?? null,
+        profile_name: msg.profileName,
+        media_id: msg.mediaId,
+        mime_type: msg.mimeType,
+        caption: msg.caption,
+      })
       .select("id")
       .maybeSingle();
     if (error || !log) continue;
 
-    void markRead(msg.id);
-
-    try {
-      const result = await handleInbound(admin, msg);
-      await sendText(msg.from, result.reply);
-      await admin
-        .from("wa_messages")
-        .update({ user_id: result.userId, status: result.status, reply: result.reply })
-        .eq("id", log.id);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "erreur inconnue";
-      await admin.from("wa_messages").update({ status: "error", reply: message }).eq("id", log.id);
-      try {
-        await sendText(msg.from, "Oups, je n'ai pas réussi à traiter ce message. Réessaie dans un instant ou envoie AIDE.");
-      } catch {
-        // rien de plus à faire
-      }
-    }
+    // Lancement du traitement dans une invocation séparée, sans attendre sa réponse
+    kicks.push(
+      fetch(`${base}/api/whatsapp/process`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-internal-token": process.env.WHATSAPP_VERIFY_TOKEN ?? "" },
+        body: JSON.stringify({ id: log.id }),
+      }).catch(() => undefined)
+    );
   }
 
+  // On laisse ~1,5 s aux requêtes de traitement pour partir, puis on répond à Meta
+  await Promise.race([Promise.allSettled(kicks), new Promise((r) => setTimeout(r, 1500))]);
   return NextResponse.json({ ok: true });
+}
+
+function publicOrigin(request: NextRequest): string {
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  return host ? `https://${host}` : new URL(request.url).origin;
 }

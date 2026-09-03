@@ -34,4 +34,8 @@ export const SAMPLES: Array<{ sender: string; body: string }> = [
     sender: "OrangeMoney",
     body: "Achat de credit de 1000 FCFA effectue pour le 771234567. Nouveau solde: 52500 FCFA. Ref: PP260903.1610.D22222",
   },
+  // Wave réglé en anglais (formats approximatifs)
+  { sender: "Wave", body: "Sent 20.200F to ARISTIDE N 78 874 26 19. New balance: 31.300F. Transaction ID: TENG0001" },
+  { sender: "Wave", body: "Received 25.500F from Maria C T 78 434 50 79. New balance: 56.800F. Transaction ID: TENG0002" },
+  { sender: "Wave", body: "Bought airtime for 78 166 89 58: 6.000F. New balance: 50.800F. Transaction ID: TENG0003" },
 ];

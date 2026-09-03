@@ -12,8 +12,9 @@ import type { Direction, ParsedTx, Provider, TxKind } from "./types";
  */
 
 // Pas de \b autour des mots accentués : en JS, "é" n'est pas un caractère de mot.
-const DEBIT_WORDS = /(envoy[ée]|transf[ée]r|pay[ée]|paiement|achat|achet[ée]|retir[ée]|retrait|facture|d[ée]bit)/i;
-const CREDIT_WORDS = /(re[çc]u|d[ée]p[oô]t|d[ée]pos[ée]|vers[ée] sur votre)/i;
+const DEBIT_WORDS =
+  /(envoy[ée]|transf[ée]r|pay[ée]|paiement|achat|achet[ée]|retir[ée]|retrait|facture|d[ée]bit|\bsent\b|\bpaid\b|\bbought\b|\bwithdr|\bpayment\b|\btransfer to\b)/i;
+const CREDIT_WORDS = /(re[çc]u|d[ée]p[oô]t|d[ée]pos[ée]|vers[ée] sur votre|\breceived\b|\bdeposit)/i;
 
 // "5 000 FCFA", "5000FCFA", "5,000F", "12.500 F CFA", "5000 CFA"
 const AMOUNT_RE = /(\d{1,3}(?:[ \u202f\u00a0.,]\d{3})+|\d+)\s?(?:F\s?CFA|FCFA|CFA|F)(?![a-z])/gi;
@@ -43,12 +44,12 @@ function findAmountAfter(body: string, keyword: RegExp): number | null {
 
 function detectKind(body: string): TxKind {
   const b = body.toLowerCase();
-  if (/retrait|retir[ée]|cash ?out/.test(b)) return "withdrawal";
-  if (/d[ée]p[oô]t|d[ée]pos[ée]|cash ?in/.test(b)) return "deposit";
-  if (/cr[ée]dit|recharge|pass |illimix|forfait/.test(b)) return "airtime";
-  if (/facture|senelec|woyofal|sen'?eau|sde\b|canal/.test(b)) return "bill";
-  if (/pay[ée]|paiement|marchand|achat/.test(b)) return "payment";
-  if (/envoy[ée]|transf[ée]r|re[çc]u|recu/.test(b)) return "transfer";
+  if (/retrait|retir[ée]|cash ?out|withdr/.test(b)) return "withdrawal";
+  if (/d[ée]p[oô]t|d[ée]pos[ée]|cash ?in|deposit/.test(b)) return "deposit";
+  if (/cr[ée]dit|recharge|pass |illimix|forfait|airtime|data bundle/.test(b)) return "airtime";
+  if (/facture|senelec|woyofal|sen'?eau|sde\b|canal|\bbill\b/.test(b)) return "bill";
+  if (/pay[ée]|paiement|marchand|achat|\bpaid\b|payment|\bbought\b/.test(b)) return "payment";
+  if (/envoy[ée]|transf[ée]r|re[çc]u|recu|\bsent\b|received|transfer/.test(b)) return "transfer";
   return "other";
 }
 
@@ -64,6 +65,8 @@ function detectDirection(body: string, kind: TxKind): Direction | null {
 const CP_END = String.raw`(?=\s*[(.]|\s+(?:Frais|Nouveau|Votre|Solde|ID|Ref|R[ée]f|Le \d)|$)`;
 const CP_PATTERNS: RegExp[] = [
   new RegExp(String.raw`\bchez\s+([^.\n(]+?)` + CP_END, "i"),
+  // Anglais (app Wave en anglais) : "Sent 20.200F to ARISTIDE N 78 874 26 19", "Received 25.500F from Maria C"
+  new RegExp(String.raw`\b(?:to|from|for)\s+([^.\n(]+?)(?=\s*[(.]|\s+(?:New balance|Balance|Fee|Transaction|ID|Ref)|$)`, "i"),
   new RegExp(String.raw`(?:^|\s)(?:à|a|au|aupr[èe]s de)\s+([^.\n(]+?)` + CP_END, "i"),
   new RegExp(String.raw`\bpour le\s+(\+?\d[\d ]{6,})`, "i"),
   new RegExp(String.raw`(?:re[çc]u|de la part)(?:\s+\S+)?\s+de\s+([^.\n(]+?)` + CP_END, "i"),
@@ -103,8 +106,8 @@ export function parseSms(sender: string | null | undefined, body: string): Parse
   const direction = detectDirection(text, kind);
   if (!direction) return null;
 
-  const fee = findAmountAfter(text, /frais\s*(?:de|:)?/i) ?? 0;
-  const balance_after = findAmountAfter(text, /solde\s*(?:est|:|de|actuel)?\s*(?:de)?\s*:?/i);
+  const fee = findAmountAfter(text, /(?:frais|fee)\s*(?:de|:)?/i) ?? 0;
+  const balance_after = findAmountAfter(text, /(?:solde|balance)\s*(?:est|is|:|de|actuel)?\s*(?:de)?\s*:?/i);
 
   // Montant principal : le premier montant qui n'est ni les frais ni le solde
   const amount =
