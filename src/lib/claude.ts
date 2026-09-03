@@ -114,3 +114,23 @@ export function safeParseTransactions(text: string): ParsedTx[] {
     })
     .filter((t): t is ParsedTx => t !== null);
 }
+
+// Réponse courte à une question sur les dépenses du mois (canal WhatsApp)
+export async function answerMoneyQuestion(question: string, monthContext: string): Promise<string> {
+  const client = getClient();
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: 300,
+    system: `Tu es l'assistant d'une application de suivi des dépenses Wave et Orange Money au Sénégal.
+Tu réponds sur WhatsApp, en français simple, en 1 à 3 phrases, sans tiret cadratin, sans markdown.
+Tu utilises UNIQUEMENT les chiffres fournis dans le contexte. Si l'information n'y est pas, dis-le et propose
+ce que l'utilisateur peut envoyer (un montant et un mot, une capture d'écran, un SMS Wave ou Orange Money).
+Montants en francs CFA avec un espace comme séparateur de milliers et "F" (ex : 12 500 F).`,
+    messages: [{ role: "user", content: `Contexte du mois :\n${monthContext}\n\nQuestion : ${question}` }],
+  });
+  return response.content
+    .filter((b) => b.type === "text")
+    .map((b) => (b.type === "text" ? b.text : ""))
+    .join("")
+    .trim();
+}

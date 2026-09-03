@@ -10,6 +10,9 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text,
   ingest_token text not null unique default encode(gen_random_bytes(24), 'hex'),
+  wa_phone text unique,                 -- numéro WhatsApp lié (E.164 sans +)
+  pairing_code text,                    -- code à 6 chiffres pour lier un numéro
+  pairing_expires_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -110,6 +113,23 @@ create table if not exists public.inbound_sms (
 create index if not exists inbound_sms_user_idx on public.inbound_sms (user_id, received_at desc);
 
 -- ---------------------------------------------------------------------------
+-- WhatsApp inbound log (dedupes Meta webhook retries via wa_message_id)
+-- ---------------------------------------------------------------------------
+create table if not exists public.wa_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users (id) on delete set null,
+  wa_from text not null,
+  wa_message_id text not null unique,
+  type text not null,
+  body text,
+  status text not null default 'received'
+    check (status in ('received', 'handled', 'ignored', 'error')),
+  reply text,
+  received_at timestamptz not null default now()
+);
+create index if not exists wa_messages_user_idx on public.wa_messages (user_id, received_at desc);
+
+-- ---------------------------------------------------------------------------
 -- Row level security: every user only sees their own rows
 -- ---------------------------------------------------------------------------
 alter table public.profiles enable row level security;
@@ -119,6 +139,7 @@ alter table public.transactions enable row level security;
 alter table public.budgets enable row level security;
 alter table public.merchant_rules enable row level security;
 alter table public.inbound_sms enable row level security;
+alter table public.wa_messages enable row level security;
 
 drop policy if exists "own profile" on public.profiles;
 create policy "own profile" on public.profiles
@@ -143,6 +164,10 @@ create policy "own budgets" on public.budgets
 drop policy if exists "own merchant rules" on public.merchant_rules;
 create policy "own merchant rules" on public.merchant_rules
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own wa messages" on public.wa_messages;
+create policy "own wa messages" on public.wa_messages
+  for select using (auth.uid() = user_id);
 
 drop policy if exists "own inbound sms" on public.inbound_sms;
 create policy "own inbound sms" on public.inbound_sms

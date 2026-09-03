@@ -1,15 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { APP_NAME } from "@/lib/app";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const params = useSearchParams();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(
+    params.get("error") === "confirmation"
+      ? "Le lien de confirmation n'est plus valide. Connectez-vous avec votre mot de passe, ou créez à nouveau votre compte."
+      : null
+  );
   const [busy, setBusy] = useState(false);
 
   async function submit() {
@@ -19,7 +33,12 @@ export default function LoginPage() {
     const { error } =
       mode === "signin"
         ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
+        : await supabase.auth.signUp({
+            email,
+            password,
+            // Le lien de confirmation revient sur l'app (et non sur le Site URL Supabase par défaut)
+            options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+          });
     setBusy(false);
     if (error) {
       setMessage(error.message);
@@ -39,7 +58,7 @@ export default function LoginPage() {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6">
       <p className="mb-1 text-sm text-ink-muted">Wave et Orange Money</p>
-      <h1 className="mb-8 text-[28px] font-medium tracking-tight">Sama Dépenses</h1>
+      <h1 className="mb-8 text-[28px] font-medium tracking-tight">{APP_NAME}</h1>
 
       <div className="card space-y-3 p-5">
         <label className="block">

@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { APP_NAME, APP_TAGLINE } from "@/lib/app";
 
 export const metadata: Metadata = {
-  title: "Sama Dépenses",
-  description: "Suivi des dépenses Wave et Orange Money",
+  title: APP_NAME,
+  description: APP_TAGLINE,
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Sama Dépenses" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: APP_NAME },
   icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
 };
 

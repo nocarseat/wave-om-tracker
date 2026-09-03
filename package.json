@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:sms": "node --experimental-strip-types scripts/test-sms.ts"
+    "test:sms": "node --experimental-strip-types scripts/test-sms.ts",
+    "test:wa": "node --experimental-strip-types scripts/test-whatsapp.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

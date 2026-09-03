@@ -28,3 +28,16 @@ Le webhook attend `POST /api/ingest/sms` avec le header `x-ingest-token` et un J
 - `npm run dev` : développement
 - `npm run build` : build de production (à lancer avant de pousser)
 - `npm run test:sms` : teste le parseur SMS sur les exemples de `src/lib/sms.samples.ts`
+
+## WhatsApp (Meta Cloud API)
+
+1. developers.facebook.com > My Apps > Create app (type Business) > ajouter le produit WhatsApp.
+2. WhatsApp > API Setup : notez le **Phone number ID** et le **numéro de test** ; ajoutez votre propre numéro
+   dans « To » (code de vérification reçu sur WhatsApp). Le jeton temporaire dure 24 h ; pour un jeton permanent :
+   Business Settings > System users > Add > Generate token (permission whatsapp_business_messaging).
+3. WhatsApp > Configuration > Webhook : Callback URL `https://<votre-site>/api/whatsapp/webhook`,
+   Verify token = la valeur de `WHATSAPP_VERIFY_TOKEN`, puis Subscribe au champ **messages**.
+4. Variables : `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `NEXT_PUBLIC_WHATSAPP_NUMBER`,
+   `NEXT_PUBLIC_SITE_URL` (et `WHATSAPP_APP_SECRET` si vous voulez vérifier les signatures). Redéployez.
+5. Exécutez `supabase/migrations/002_whatsapp.sql` dans le SQL Editor (projets créés avant v7).
+6. Test : envoyez AIDE au numéro de test depuis votre WhatsApp.
